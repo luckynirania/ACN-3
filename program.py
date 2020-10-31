@@ -1,5 +1,6 @@
 import argparse 
 import sys
+import random
 
 parser = argparse.ArgumentParser() 
 parser.add_argument("-N", help = "number of input and output ports")
@@ -24,7 +25,65 @@ K = int(args.K)
 outputfile = str(args.out) 
 T = int(args.T) 
 
+class Packet:
+    def __init__(self, frm, to, timestamp):
+        self.frm = frm 
+        self.to = to
+        self.timestamp = timestamp
+    def disp(self):
+        return (self.frm, self.timestamp, self.to)
 
+
+Buffer = 0
+InputPort = []
+for _ in range(N):
+    InputPort.append([])
+
+# Here starts packet generation part
+
+def gen_packets(_):
+    global Buffer
+    for i in range(N):
+        x = random.random()
+        if x < p and Buffer < B:
+            packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
+            InputPort[i].append(packet)
+            Buffer += 1
+
+# Here ends packet generation part
+
+# Alogithm selection
+
+if queue == 'INQ':
+    print("INQ starts")
+    # Here starts INQ
+    for _ in range(T):
+        # Generate the Packet for Ports
+        gen_packets(_)
+
+        # Calculate How many Input ports want to send packet to ouput port
+    # Here ends INQ
+
+# for each in InputPort:
+#     print([i.disp() for i in each])
+
+if queue == 'KUOQ':
+    print("KUOQ starts")
+    # Here starts KUOQ
+    for _ in range(T):
+        # Generate the Packet for Ports
+        gen_packets(_)
+
+    # Here ends KUOQ
+
+if queue == 'iSLIP':
+    print("iSLIP starts")
+    # Here starts iSLIP
+    for _ in range(T):
+        # Generate the Packet for Ports
+        gen_packets(_)
+
+    # Here ends iSLIP
 # INQ
 '''
 Read MaxTimeSlots, NumberofPorts from command line
