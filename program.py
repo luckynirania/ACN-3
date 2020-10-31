@@ -1,6 +1,7 @@
 import argparse 
 import sys
 import random
+import copy
 
 parser = argparse.ArgumentParser() 
 parser.add_argument("-N", help = "number of input and output ports")
@@ -30,25 +31,25 @@ class Packet:
         self.frm = frm 
         self.to = to
         self.timestamp = timestamp
+        self.delay = 0
     def disp(self):
         return (self.frm, self.timestamp, self.to)
 
 
-Buffer = 0
-InputPort = []
-for _ in range(N):
-    InputPort.append([])
+InputPort = [[] for i in range(N)]
+OutputPort = [[] for i in range(N)]
 
 # Here starts packet generation part
 
 def gen_packets(_):
-    global Buffer
+    generated_count = 0
     for i in range(N):
         x = random.random()
-        if x < p and Buffer < B:
+        if x < p and len(InputPort[i]) < B:
             packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
             InputPort[i].append(packet)
-            Buffer += 1
+            generated_count += 1
+    return generated_count
 
 # Here ends packet generation part
 
@@ -57,14 +58,70 @@ def gen_packets(_):
 if queue == 'INQ':
     print("INQ starts")
     # Here starts INQ
+    packets = []
+    generated_count = 0
+    transfer_count = 0
+    total_delay = 0
     for _ in range(T):
         # Generate the Packet for Ports
-        gen_packets(_)
+        generated_count += gen_packets(_)
 
         # Calculate How many Input ports want to send packet to ouput port
+        packetToOutputport = [[] for i in range(N)]
+        for i in range(N):
+            for j in range(len(InputPort[i])):
+                packetToOutputport[InputPort[i][j].to].append(InputPort[i][j])
+        # print(packetToOutputport)
+
+        # for each in InputPort:
+        #     print([i.disp() for i in each])
+        # print("-------------")
+
+        for i in range(N):
+            size = len(packetToOutputport[i])
+            if size > 0:
+                if size == 1:
+                    packet = copy.deepcopy(packetToOutputport[i][0])
+                    packet.delay = int(_) - int(packet.timestamp)
+                    # print("................", packet.delay, _ , packet.timestamp)
+                    OutputPort[i].append(packet)
+                    # del packetToOutputport[i][0]
+                    InputPort[packet.frm].remove(packetToOutputport[i][0])
+
+                    del packetToOutputport[i][0]
+                else:
+                    index = int(len(packetToOutputport[i]) * random.random())
+                    packet = copy.deepcopy(packetToOutputport[i][index])
+                    packet.delay = int(_) - int(packet.timestamp)
+                    # print("................", packet.delay, _ , packet.timestamp)
+                    OutputPort[i].append(packet)
+                    # del packetToOutputport[i][0]
+                    InputPort[packet.frm].remove(packetToOutputport[i][index])
+
+                    del packetToOutputport[i][index]
+        # print(packetToOutputport)
+
+        for i in range(N):
+            transfer_count += len(OutputPort[i])
+            for each in OutputPort[i]:
+                packets.append(each.delay)
+                total_delay += each.delay
+            OutputPort[i] = []
+            # packetToOutputport
+
+    print('total delay\t', total_delay)
+    print('total gener\t', generated_count)
+    print('total trans\t', transfer_count)
+    print('averg delay\t', total_delay/transfer_count)
+    print('devia delay\t', -1)
+    print('link utiliz\t', -1)
+    # print('loi', generated_count, transfer_count, total_delay, sum(packets))
     # Here ends INQ
 
 # for each in InputPort:
+#     print([i.disp() for i in each])
+# print("-------------")
+# for each in OutputPort:
 #     print([i.disp() for i in each])
 
 if queue == 'KUOQ':
