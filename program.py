@@ -2,6 +2,7 @@ import argparse
 import sys
 import random
 import copy
+import statistics
 
 parser = argparse.ArgumentParser() 
 parser.add_argument("-N", help = "number of input and output ports")
@@ -113,8 +114,8 @@ if queue == 'INQ':
     print('total gener\t', generated_count)
     print('total trans\t', transfer_count)
     print('averg delay\t', total_delay/transfer_count)
-    print('devia delay\t', -1)
-    print('link utiliz\t', -1)
+    print('devia delay\t', statistics.stdev(packets))
+    print('link utiliz\t', transfer_count/(N*T))
     # print('loi', generated_count, transfer_count, total_delay, sum(packets))
     # Here ends INQ
 
