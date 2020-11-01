@@ -136,29 +136,30 @@ if queue == 'KUOQ':
         # Packet Scheduling
         for i in range(N):
             if len(packetsToSend[i]) > 0:
-                if len(packetsToSend[i]) == 1:
+                if len(packetsToSend[i]) == 1 and len(OutputPort[i]) < B:
                     packet = copy.deepcopy(packetsToSend[i][0])
                     OutputPort[i].append(packet)
-                elif len(packetsToSend[i]) > 1 and len(packetsToSend[i]) <= K:
+                elif len(packetsToSend[i]) > 1 and len(packetsToSend[i]) <= (K - len(OutputPort[i])):
                     for each in packetsToSend[i]:
                         packet = copy.deepcopy(each)
                         OutputPort[i].append(packet)
                 else:
-                    dropped_count += len(packetsToSend[i]) - K
-                    random_K = [int(K*random.random()) for i in range(K)]
-                    for each in random_K:
+                    space_left = K - len(OutputPort[i]) 
+                    dropped_count += len(packetsToSend[i]) - space_left
+                    random_space_left = [int(space_left*random.random()) for i in range(space_left)]
+                    for each in random_space_left:
                         packet = copy.deepcopy(packetsToSend[i][each])
                         OutputPort[i].append(packet)
                 packetsToSend[i] = []
         # print([len(each) for each in OutputPort])
         # Transfer
         for i in range(N):
-            for each in OutputPort[i]:
-                delay = int(_) - int(each.timestamp)
+            if len(OutputPort[i]) > 0:
+                delay = int(_) - int(OutputPort[i][-1].timestamp)
                 total_delay += delay
                 transfer_count += 1
                 packets.append(delay)
-            OutputPort[i] = []
+                OutputPort[i].remove(OutputPort[i][-1])
 
     print('total delay\t', total_delay)
     print('total gener\t', generated_count)
