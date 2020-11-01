@@ -16,7 +16,7 @@ parser.add_argument("-T", help = "max simulation time")
 args = parser.parse_args() 
 
 if(len(sys.argv) != 15):
-    # print("py .\program.py -N switchpoercount -B buffersize -p packetgenprob -queue INQ | KONQ | iSLIP -K knockout -out outputfile -T maxtimeslots")
+    print("python3 program.py -N switchpoercount -B buffersize -p packetgenprob -queue INQ | KONQ | iSLIP -K knockout -out outputfile -T maxtimeslots")
     exit()
 
 N = int(args.N) 
@@ -42,12 +42,14 @@ class Packet:
 if queue == 'INQ':
     print("INQ starts")
     # Here starts INQ
+
     InputPort = [[] for i in range(N)]
-    OutputPort = [[] for i in range(N)]
+    OutputPort = [None for i in range(N)]
     packets = []
     generated_count = 0
     transfer_count = 0
     total_delay = 0
+    
     for _ in range(T):
         # Generate the Packet for Ports
         for i in range(N):
@@ -71,7 +73,7 @@ if queue == 'INQ':
                     packet = copy.deepcopy(packetToOutputport[i][0])
                     packet.delay = int(_) - int(packet.timestamp)
                     # print("................", packet.delay, _ , packet.timestamp)
-                    OutputPort[i].append(packet)
+                    OutputPort[i] = packet
                     # del packetToOutputport[i][0]
                     InputPort[packet.frm].remove(packetToOutputport[i][0])
 
@@ -82,18 +84,18 @@ if queue == 'INQ':
                     packet = copy.deepcopy(packetToOutputport[i][index])
                     packet.delay = int(_) - int(packet.timestamp)
 
-                    OutputPort[i].append(packet)
+                    OutputPort[i] = (packet)
 
                     InputPort[packet.frm].remove(packetToOutputport[i][index])
                     del packetToOutputport[i][index]
 
         # Transfer the packets
         for i in range(N):
-            transfer_count += len(OutputPort[i])
-            for each in OutputPort[i]:
-                packets.append(each.delay)
-                total_delay += each.delay
-            OutputPort[i] = []
+            if OutputPort[i] is not None:
+                transfer_count += 1
+                packets.append(OutputPort[i].delay)
+                total_delay += OutputPort[i].delay
+            OutputPort[i] = None
 
     print('total delay\t', total_delay)
     print('total gener\t', generated_count)
@@ -129,14 +131,11 @@ if queue == 'KUOQ':
                 packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
                 packetsToSend[packet.to].append(packet)
                 generated_count += 1
-        # for each in packetsToSend:
-        #     print([i.disp() for i in each])
-
-        # print([len(each) for each in packetsToSend])
+                
         # Packet Scheduling
         for i in range(N):
             if len(packetsToSend[i]) > 0:
-                if len(packetsToSend[i]) == 1 and len(OutputPort[i]) < B:
+                if len(packetsToSend[i]) == 1 and len(OutputPort[i]) < K:
                     packet = copy.deepcopy(packetsToSend[i][0])
                     OutputPort[i].append(packet)
                 elif len(packetsToSend[i]) > 1 and len(packetsToSend[i]) <= (K - len(OutputPort[i])):
@@ -146,7 +145,7 @@ if queue == 'KUOQ':
                 else:
                     space_left = K - len(OutputPort[i]) 
                     dropped_count += len(packetsToSend[i]) - space_left
-                    random_space_left = [int(space_left*random.random()) for i in range(space_left)]
+                    random_space_left = [int(len(packetsToSend[i])*random.random()) for i in range(space_left)]
                     for each in random_space_left:
                         packet = copy.deepcopy(packetsToSend[i][each])
                         OutputPort[i].append(packet)
