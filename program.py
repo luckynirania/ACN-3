@@ -16,7 +16,7 @@ parser.add_argument("-T", help = "max simulation time")
 args = parser.parse_args() 
 
 if(len(sys.argv) != 15):
-    print("format is : py .\program.py -N switchpoercount -B buffersize -p packetgenprob -queue INQ | KONQ | iSLIP -K knockout -out outputfile -T maxtimeslots")
+    # print("py .\program.py -N switchpoercount -B buffersize -p packetgenprob -queue INQ | KONQ | iSLIP -K knockout -out outputfile -T maxtimeslots")
     exit()
 
 N = int(args.N) 
@@ -37,47 +37,33 @@ class Packet:
         return (self.frm, self.timestamp, self.to)
 
 
-InputPort = [[] for i in range(N)]
-OutputPort = [[] for i in range(N)]
-
-# Here starts packet generation part
-
-def gen_packets(_):
-    generated_count = 0
-    for i in range(N):
-        x = random.random()
-        if x < p and len(InputPort[i]) < B:
-            packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
-            InputPort[i].append(packet)
-            generated_count += 1
-    return generated_count
-
-# Here ends packet generation part
-
 # Alogithm selection
 
 if queue == 'INQ':
     print("INQ starts")
     # Here starts INQ
+    InputPort = [[] for i in range(N)]
+    OutputPort = [[] for i in range(N)]
     packets = []
     generated_count = 0
     transfer_count = 0
     total_delay = 0
     for _ in range(T):
         # Generate the Packet for Ports
-        generated_count += gen_packets(_)
+        for i in range(N):
+            x = random.random()
+            if x < p and len(InputPort[i]) < B:
+                packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
+                InputPort[i].append(packet)
+                generated_count += 1
 
         # Calculate How many Input ports want to send packet to ouput port
         packetToOutputport = [[] for i in range(N)]
         for i in range(N):
             for j in range(len(InputPort[i])):
                 packetToOutputport[InputPort[i][j].to].append(InputPort[i][j])
-        # print(packetToOutputport)
-
-        # for each in InputPort:
-        #     print([i.disp() for i in each])
-        # print("-------------")
-
+        
+        # Packet Scheduling
         for i in range(N):
             size = len(packetToOutputport[i])
             if size > 0:
@@ -92,23 +78,22 @@ if queue == 'INQ':
                     del packetToOutputport[i][0]
                 else:
                     index = int(len(packetToOutputport[i]) * random.random())
+
                     packet = copy.deepcopy(packetToOutputport[i][index])
                     packet.delay = int(_) - int(packet.timestamp)
-                    # print("................", packet.delay, _ , packet.timestamp)
+
                     OutputPort[i].append(packet)
-                    # del packetToOutputport[i][0]
+
                     InputPort[packet.frm].remove(packetToOutputport[i][index])
-
                     del packetToOutputport[i][index]
-        # print(packetToOutputport)
 
+        # Transfer the packets
         for i in range(N):
             transfer_count += len(OutputPort[i])
             for each in OutputPort[i]:
                 packets.append(each.delay)
                 total_delay += each.delay
             OutputPort[i] = []
-            # packetToOutputport
 
     print('total delay\t', total_delay)
     print('total gener\t', generated_count)
@@ -128,9 +113,61 @@ if queue == 'INQ':
 if queue == 'KUOQ':
     print("KUOQ starts")
     # Here starts KUOQ
+    packets = []
+    generated_count = 0
+    transfer_count = 0
+    dropped_count = 0
+    total_delay = 0
+    OutputPort = [[] for i in range(N)]
+
     for _ in range(T):
+        packetsToSend = [[] for i in range(N)]
         # Generate the Packet for Ports
-        gen_packets(_)
+        for i in range(N):
+            x = random.random()
+            if x < p:
+                packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
+                packetsToSend[packet.to].append(packet)
+                generated_count += 1
+        # for each in packetsToSend:
+        #     print([i.disp() for i in each])
+
+        # print([len(each) for each in packetsToSend])
+        # Packet Scheduling
+        for i in range(N):
+            if len(packetsToSend[i]) > 0:
+                if len(packetsToSend[i]) == 1:
+                    packet = copy.deepcopy(packetsToSend[i][0])
+                    OutputPort[i].append(packet)
+                elif len(packetsToSend[i]) > 1 and len(packetsToSend[i]) <= K:
+                    for each in packetsToSend[i]:
+                        packet = copy.deepcopy(each)
+                        OutputPort[i].append(packet)
+                else:
+                    dropped_count += len(packetsToSend[i]) - K
+                    random_K = [int(K*random.random()) for i in range(K)]
+                    for each in random_K:
+                        packet = copy.deepcopy(packetsToSend[i][each])
+                        OutputPort[i].append(packet)
+                packetsToSend[i] = []
+        # print([len(each) for each in OutputPort])
+        # Transfer
+        for i in range(N):
+            for each in OutputPort[i]:
+                delay = int(_) - int(each.timestamp)
+                total_delay += delay
+                transfer_count += 1
+                packets.append(delay)
+            OutputPort[i] = []
+
+    print('total delay\t', total_delay)
+    print('total gener\t', generated_count)
+    print('total dropp\t', dropped_count)
+    print('total trans\t', transfer_count)
+    print('averg delay\t', total_delay/transfer_count)
+    print('devia delay\t', statistics.stdev(packets))
+    print('link utiliz\t', transfer_count/(N*T))
+    # print(len(packets))
 
     # Here ends KUOQ
 
@@ -139,54 +176,6 @@ if queue == 'iSLIP':
     # Here starts iSLIP
     for _ in range(T):
         # Generate the Packet for Ports
-        gen_packets(_)
+        print('lol')
 
     # Here ends iSLIP
-# INQ
-'''
-Read MaxTimeSlots, NumberofPorts from command line
-Initilize of the variables InputPort, OutputPort, packetToOutputport
-
-Repeat i=1 to MaxTimeSlots
-
-	//Generate the Packet for Ports
-	Repeat NumberofPorts time
-		Generate RandNumber, 
-		If RandNumber is less than the Probobility(PacketGenerateProb) and Buffer is not full then
-			generate a packet and store it in InputPort
-	Repeat End
-
-	// Calculate How many Input ports want to send packet to ouput port
-	Repeat j=1 to NumberofPorts
-		If InputPort of j > 0 Then
-			Increment packetToOutputport[j]
-	Repeat End
-
-	//Packet Scheduling 
-
-	Repeat j=1 to NumberofPorts
-		If packetToOutputport[j] has packet to send
-			If packetToOutputport[j] == 1 then // If no contention
-				store the packet in OutputPort and remove the packet from InputPort 
-				decrement packetToOutputport[j] count
-				record the Delay for Port j //delay = delay + No of packets Transmitted at InputPort j
-			ELSE //If there is a contention
-				randomly select a packet, store it in OutputPort j for transmission and remove same the packet from InputPort 
-				decrement packetToOutputport[j] count
-				record the Delay for Port j //delay = delay + No of packets Transmitted at InputPort j
-
-	Repeat End
-
-	//Transfer the Packet
-	Repeat k=1 to NumberofPorts
-		IF OutputPort has packets to send
-			Increment packetTransmitted count
-			Clear OutputPort k
-		clear packetToOutputport[k]
-	Repeat End
-Repeat End	
-
-Calculate the TotalDelay, Average packet Delay, standard deviation packet delay and avg link Utilization and write into a file
-
-
-'''
