@@ -3,12 +3,13 @@ import sys
 import random
 import copy
 import statistics
+import math
 
 parser = argparse.ArgumentParser() 
 parser.add_argument("-N", help = "number of input and output ports")
 parser.add_argument("-B", help = "size of buffer")
 parser.add_argument("-p", help = "probability")
-parser.add_argument("-queue", help = "INQ | KONQ | iSLIP")
+parser.add_argument("-queue", help = "INQ | KOUQ | ISLIP")
 parser.add_argument("-K", help = "max K packets queued per output port")
 parser.add_argument("-out", help = "output file")
 parser.add_argument("-T", help = "max simulation time")  
@@ -16,7 +17,7 @@ parser.add_argument("-T", help = "max simulation time")
 args = parser.parse_args() 
 
 if(len(sys.argv) != 15):
-    print("python3 program.py -N switchpoercount -B buffersize -p packetgenprob -queue INQ | KONQ | iSLIP -K knockout -out outputfile -T maxtimeslots")
+    print("python3 program.py -N switchpoercount -B buffersize -p packetgenprob -queue INQ | KONQ | ISLIP -K knockout -out outputfile -T maxtimeslots")
     exit()
 
 N = int(args.N) 
@@ -97,23 +98,23 @@ if queue == 'INQ':
                 total_delay += OutputPort[i].delay
             OutputPort[i] = None
 
-    print('total delay\t', total_delay)
-    print('total gener\t', generated_count)
-    print('total trans\t', transfer_count)
-    print('averg delay\t', total_delay/transfer_count)
-    print('devia delay\t', statistics.stdev(packets))
-    print('link utiliz\t', transfer_count/(N*T))
-    # print('loi', generated_count, transfer_count, total_delay, sum(packets))
-    # Here ends INQ
+    file1 = open(outputfile, "a")
+    # file1.write('N\tP\tQtype\tAvgPD\tStd. Dev of PD\tAvg LU'+ '\n')
+    file1.write(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(total_delay/transfer_count) + '\t' + str((total_delay/transfer_count)/math.sqrt(N)) + '\t' + str(transfer_count/(N*T))+ '\n')
+    file1.close()
 
-# for each in InputPort:
-#     print([i.disp() for i in each])
-# print("-------------")
-# for each in OutputPort:
-#     print([i.disp() for i in each])
+    print('N\tP\tQtype\tAvgPD\tStd. Dev of PD\tAvg LU')
+    print(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(total_delay/transfer_count) + '\t' + str((total_delay/transfer_count)/math.sqrt(N)) + '\t' + str(transfer_count/(N*T)))
 
-if queue == 'KUOQ':
-    print("KUOQ starts")
+    # print('total delay\t', total_delay)
+    # print('total gener\t', generated_count)
+    # print('total trans\t', transfer_count)
+    # print('averg delay\t', total_delay/transfer_count)
+    # print('devia delay\t', statistics.stdev(packets))
+    # print('link utiliz\t', transfer_count/(N*T))
+
+if queue == 'KOUQ':
+    print("KOUQ starts")
     # Here starts KUOQ
     packets = []
     generated_count = 0
@@ -160,22 +161,89 @@ if queue == 'KUOQ':
                 packets.append(delay)
                 OutputPort[i].remove(OutputPort[i][-1])
 
-    print('total delay\t', total_delay)
-    print('total gener\t', generated_count)
-    print('total dropp\t', dropped_count)
-    print('total trans\t', transfer_count)
-    print('averg delay\t', total_delay/transfer_count)
-    print('devia delay\t', statistics.stdev(packets))
-    print('link utiliz\t', transfer_count/(N*T))
+    file1 = open(outputfile, "a")
+    # file1.write('N\tP\tQtype\tAvgPD\tStd. Dev of PD\tAvg LU'+ '\n')
+    file1.write(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(total_delay/transfer_count) + '\t' + str((total_delay/transfer_count)/math.sqrt(N)) + '\t' + str(transfer_count/(N*T))+ '\n')
+    file1.close()
+
+    print('N\tP\tQtype\tAvgPD\tStd. Dev of PD\tAvg LU')
+    print(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(total_delay/transfer_count) + '\t' + str((total_delay/transfer_count)/math.sqrt(N)) + '\t' + str(transfer_count/(N*T)))
+
+    # print('total delay\t', total_delay)
+    # print('total gener\t', generated_count)
+    # print('total dropp\t', dropped_count)
+    # print('total trans\t', transfer_count)
+    # print('averg delay\t', total_delay/transfer_count)
+    # print('devia delay\t', statistics.stdev(packets))
+    # print('link utiliz\t', transfer_count/(N*T))
     # print(len(packets))
 
     # Here ends KUOQ
 
-if queue == 'iSLIP':
-    print("iSLIP starts")
+if queue == 'ISLIP':
+    print("ISLIP starts")
+    generated_count = 0
+    InputPort = [[] for i in range(N)]
+    OutputPort = [None for i in range(N)]
+    request = [ [ 0 for i in range(N) ] for j in range(N) ]
+    lastUsedPort= [ -1 for i in range(N) ]
+    delaylist = []
+
+    def grant(out_port, portUsed):
+        for i in range(lastUsedPort[out_port] + 1, N):
+            if(request[i][out_port] == 1 and portUsed[i] == 0):
+                portUsed[i] = 1
+                return i
+
+        for i in range(0, lastUsedPort[out_port] + 1):
+            if(request[i][out_port] == 1 and portUsed[i] == 0):
+                portUsed[i] = 1
+                return i
+        
+        return -1
+
+    def schedule_packets(InputPort,t, portUsed, delay, generated_count):
+        
+        # Grant Phase , input ports get mapped to required output ports
+        # in a round- robin fashion where last used port have lowest priority
+        for out_port in range(N):
+            lastUsedPort[out_port] = grant(out_port, portUsed)
+
+        # accept phase
+        for out_port in range(N):
+            in_port = lastUsedPort[out_port]
+            if in_port != -1:
+                # remove request
+                request[in_port][out_port] = 0
+                generated_count = generated_count - 1
+                delaylist.append(delay)
+        return generated_count
     # Here starts iSLIP
-    for _ in range(T):
+    for t in range(T):
         # Generate the Packet for Ports
-        print('lol')
+        generated = 0
+        for inPort in range(N):
+            x = random.random()
+            if x < p and len(InputPort[inPort]) < B:
+                outPort = int(random.random() * N)
+                packet = Packet(inPort, outPort , t )
+                InputPort[inPort].append(packet)
+                generated += 1
+                request[inPort][outPort] = 1
+        generated_count += generated
+        #scheduling of the traffic
+        portUsed = [ 0 for i in range(N) ]
+        delay = 0
+        while generated > 0:
+            generated = schedule_packets(InputPort,t, portUsed, delay, generated)
+            delay = delay + 1
+
+    file1 = open(outputfile, "a")
+    # file1.write('N\tP\tQtype\tAvgPD\tStd. Dev of PD\tAvg LU\n')
+    file1.write(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(sum(delaylist)/len(delaylist)) + '\t' + str((sum(delaylist)/len(delaylist))/math.sqrt(N)) + '\t' + str(generated_count/(N*T)) + '\n')
+    file1.close()
+
+    print('N\tP\tQtype\tAvgPD\tStd. Dev of PD\tAvg LU')
+    print(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(sum(delaylist)/len(delaylist)) + '\t' + str((sum(delaylist)/len(delaylist))/math.sqrt(N)) + '\t' + str(generated_count/(N*T)))
 
     # Here ends iSLIP
