@@ -8,7 +8,11 @@ Hritik Kumar,   170010013
 How to Run
 =============
 
+The program from python
 python3 program.py -N switchpoercount -B buffersize -p packetgenprob -queue INQ | KONQ | ISLIP -K knockout -out outputfile -T maxtimeslots
+
+Script to run as default values
+./run.sh
 
 
 =============
