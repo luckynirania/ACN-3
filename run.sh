@@ -1,0 +1,1 @@
+python3 program.py -N 8 -B 4 -p .5 -queue INQ  -K 0.6 -out outputfile -T 10000
