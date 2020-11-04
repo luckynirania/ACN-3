@@ -128,7 +128,7 @@ if queue == 'KOUQ':
     OutputPort = [[] for i in range(N)]
 
     for _ in range(T):
-        packetsToSend = [[] for i in range(N*N)]
+        packetsToSend = [[] for i in range(N)]
         # Generate the Packet for Ports
         for i in range(N):
             x = random.random()
@@ -136,9 +136,8 @@ if queue == 'KOUQ':
             for h in range(r):
                 if x < p:
                     packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
-                    if(len(packetsToSend[packet.to]) < B):
-                        packetsToSend[packet.to].append(packet)
-                        generated_count += 1
+                    packetsToSend[packet.to].append(packet)
+                    generated_count += 1
                 break
                 
         # Packet Scheduling
@@ -169,13 +168,15 @@ if queue == 'KOUQ':
                 packets.append(delay)
                 OutputPort[i].remove(OutputPort[i][-1])
 
+    link_uti = transfer_count/(N*T)
     file1 = open(outputfile, "a")
     # file1.write('N\tP\tQtype\tAvgPD\tStd. Dev of PD\tAvg LU'+ '\n')
-    file1.write(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(total_delay/transfer_count) + '\t' + str((total_delay/transfer_count)/math.sqrt(N)) + '\t' + str(transfer_count/(N*T))+ '\n')
+    # link_uti = 1 - link_uti
+    file1.write(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(total_delay/transfer_count) + '\t' + str((total_delay/transfer_count)/math.sqrt(N)) + '\t' + str(link_uti)+ '\n')
     file1.close()
 
     print('N\tP\tQtype\tAvgPD\tStd. Dev of PD\tAvg LU')
-    print(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(total_delay/transfer_count) + '\t' + str((total_delay/transfer_count)/math.sqrt(N)) + '\t' + str(transfer_count/(N*T)))
+    print(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(total_delay/transfer_count) + '\t' + str((total_delay/transfer_count)/math.sqrt(N)) + '\t' + str(link_uti))
 
     # print('total delay\t', total_delay)
     # print('total gener\t', generated_count)
@@ -211,6 +212,7 @@ if queue == 'ISLIP':
         return -1
 
     def schedule_packets(InputPort,t, portUsed, delay, generated_count):
+        global delaylist
         
         # Grant Phase , input ports get mapped to required output ports
         # in a round- robin fashion where last used port have lowest priority
@@ -227,9 +229,12 @@ if queue == 'ISLIP':
                 delaylist.append(delay)
         return generated_count
     # Here starts iSLIP
+
+    sum_delay = 0
     for t in range(T):
         # Generate the Packet for Ports
         generated = 0
+        InputPort = [[] for i in range(N)]
         for inPort in range(N):
             x = random.random()
             r = int(random.random() * N)
@@ -248,10 +253,11 @@ if queue == 'ISLIP':
         while generated > 0:
             generated = schedule_packets(InputPort,t, portUsed, delay, generated)
             delay = delay + 1
+        sum_delay += delay
 
     file1 = open(outputfile, "a")
     # file1.write('N\tP\tQtype\tAvgPD\tStd. Dev of PD\tAvg LU\n')
-    file1.write(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(sum(delaylist)/len(delaylist)) + '\t' + str((sum(delaylist)/len(delaylist))/math.sqrt(N)) + '\t' + str(generated_count/(N*T)) + '\n')
+    file1.write(str(N) + '\t' + str(p) + '\t' + queue + '\t' + str(sum(delaylist)/len(delaylist)) + '\t' + str((sum(delaylist)/len(delaylist))/math.sqrt(N)) + '\t' + str(generated_count/(N*sum_delay)) + '\n')
     file1.close()
 
     print('N\tP\tQtype\tAvgPD\tStd. Dev of PD\tAvg LU')
