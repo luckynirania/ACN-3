@@ -24,7 +24,8 @@ N = int(args.N)
 B = int(args.B) 
 p = float(args.p) 
 queue = str(args.queue) 
-K = int(args.K) 
+K = float(args.K) 
+knockout = int(K*N)
 outputfile = str(args.out) 
 T = int(args.T) 
 
@@ -54,11 +55,14 @@ if queue == 'INQ':
     for _ in range(T):
         # Generate the Packet for Ports
         for i in range(N):
-            x = random.random()
-            if x < p and len(InputPort[i]) < B:
-                packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
-                InputPort[i].append(packet)
-                generated_count += 1
+            r = int(random.random() * N)
+            for h in range(r):
+                x = random.random()
+                if x < p and len(InputPort[i]) < B:
+                    packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
+                    InputPort[i].append(packet)
+                    generated_count += 1
+                break
 
         # Calculate How many Input ports want to send packet to ouput port
         packetToOutputport = [[] for i in range(N)]
@@ -124,27 +128,31 @@ if queue == 'KOUQ':
     OutputPort = [[] for i in range(N)]
 
     for _ in range(T):
-        packetsToSend = [[] for i in range(N)]
+        packetsToSend = [[] for i in range(N*N)]
         # Generate the Packet for Ports
         for i in range(N):
             x = random.random()
-            if x < p:
-                packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
-                packetsToSend[packet.to].append(packet)
-                generated_count += 1
+            r = int(random.random() * N)
+            for h in range(r):
+                if x < p:
+                    packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
+                    if(len(packetsToSend[packet.to]) < B):
+                        packetsToSend[packet.to].append(packet)
+                        generated_count += 1
+                break
                 
         # Packet Scheduling
         for i in range(N):
             if len(packetsToSend[i]) > 0:
-                if len(packetsToSend[i]) == 1 and len(OutputPort[i]) < K:
+                if len(packetsToSend[i]) == 1 and len(OutputPort[i]) < knockout:
                     packet = copy.deepcopy(packetsToSend[i][0])
                     OutputPort[i].append(packet)
-                elif len(packetsToSend[i]) > 1 and len(packetsToSend[i]) <= (K - len(OutputPort[i])):
+                elif len(packetsToSend[i]) > 1 and len(packetsToSend[i]) <= (knockout - len(OutputPort[i])):
                     for each in packetsToSend[i]:
                         packet = copy.deepcopy(each)
                         OutputPort[i].append(packet)
                 else:
-                    space_left = K - len(OutputPort[i]) 
+                    space_left = knockout - len(OutputPort[i]) 
                     dropped_count += len(packetsToSend[i]) - space_left
                     random_space_left = [int(len(packetsToSend[i])*random.random()) for i in range(space_left)]
                     for each in random_space_left:
@@ -224,12 +232,15 @@ if queue == 'ISLIP':
         generated = 0
         for inPort in range(N):
             x = random.random()
-            if x < p and len(InputPort[inPort]) < B:
-                outPort = int(random.random() * N)
-                packet = Packet(inPort, outPort , t )
-                InputPort[inPort].append(packet)
-                generated += 1
-                request[inPort][outPort] = 1
+            r = int(random.random() * N)
+            for h in range(r):
+                if x < p and len(InputPort[inPort]) < B:
+                    outPort = int(random.random() * N)
+                    packet = Packet(inPort, outPort , t )
+                    InputPort[inPort].append(packet)
+                    generated += 1
+                    request[inPort][outPort] = 1
+                break
         generated_count += generated
         #scheduling of the traffic
         portUsed = [ 0 for i in range(N) ]
