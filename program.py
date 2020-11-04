@@ -136,8 +136,9 @@ if queue == 'KOUQ':
             for h in range(r):
                 if x < p:
                     packet = Packet(i, int(random.random() * N), _ + (random.random()/10))
-                    packetsToSend[packet.to].append(packet)
-                    generated_count += 1
+                    if len(packetsToSend[packet.to]) < B:
+                        packetsToSend[packet.to].append(packet)
+                        generated_count += 1
                 break
                 
         # Packet Scheduling
